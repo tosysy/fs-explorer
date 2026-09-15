@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema EXT</title>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+    <a href="index.html" class="btn-home" id="homeLink" style="animation: fadeInButton 0.5s ease-out;">🏠 <span>Página de Inicio</span></a>
+    
+    <div class="container">
+        <!-- Panel izquierdo: Generador PDF -->
+        <div class="panel" style="padding: 20px;">
+            <h2 style="font-size: 1.5em; margin-bottom: 18px; padding-bottom: 10px;">📄 Generador de Plantilla PDF</h2>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label for="divs" style="margin-bottom: 6px; font-size: 0.9em;">Número de Clústers</label>
+                    <input type="number" id="divs" value="8" min="2" max="20" style="padding: 10px 12px;" onchange="actualizarConfiguracion()">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label for="inodos" style="margin-bottom: 6px; font-size: 0.9em;">Número de INodos</label>
+                    <input type="number" id="inodos" value="4" min="1" max="50" style="padding: 10px 12px;" onchange="actualizarConfiguracion()">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label for="tipoPunteros" style="margin-bottom: 6px; font-size: 0.9em;">Tipo de Punteros</label>
+                    <select id="tipoPunteros" style="padding: 10px 12px;" onchange="actualizarConfiguracion()">
+                        <option value="simples">Simples</option>
+                        <option value="dobles" selected>Dobles</option>
+                        <option value="triples">Triples</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label for="punterosPorInodo" style="margin-bottom: 6px; font-size: 0.9em;">Punteros por Inodo</label>
+                    <input type="number" id="punterosPorInodo" value="2" min="1" max="20" style="padding: 10px 12px;" onchange="actualizarConfiguracion()">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label for="punterosPorCluster" style="margin-bottom: 6px; font-size: 0.9em;">Punteros por Clúster</label>
+                    <input type="number" id="punterosPorCluster" value="2" min="1" max="20" style="padding: 10px 12px;" onchange="actualizarConfiguracion()">
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: center; padding-top: 28px; margin-bottom: 12px;">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="ddr" checked>
+                        <label for="ddr" style="margin: 0; font-size: 0.9em;">Mostrar booleanos (DDR)</label>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="generarPDF()" style="margin-top: 12px; padding: 12px 24px;">🚀 Generar Plantilla PDF</button>
+
+            <div class="divider" style="margin: 18px 0;"></div>
+
+            <div style="background: #fef3c7; padding: 10px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                <strong style="color: #92400e; font-size: 0.85em;">💡 Instrucciones:</strong>
+                <p style="color: #78350f; margin-top: 5px; font-size: 0.78em; line-height: 1.3;">
+                    Configure el número de clústers, inodos, tipo de punteros y cantidad de punteros.
+                    Active los booleanos si desea visualizar las columnas D, D, R en la tabla EXT.
+                    Al generar, se descargará automáticamente un PDF con la estructura del sistema de archivos EXT.
+                </p>
+            </div>
+
+            <div class="divider" style="margin: 18px 0;"></div>
+
+            <div style="background: #dbeafe; padding: 12px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                <strong style="color: #1e40af; font-size: 0.85em;">📚 Creación del Directorio Raíz</strong>
+                <p style="color: #1e3a8a; margin-top: 8px; font-size: 0.78em; line-height: 1.5;">
+                    <strong>El directorio raíz (/) se crea automáticamente al inicializar el sistema y ocupa:</strong>
+                </p>
+                <ul style="color: #1e3a8a; font-size: 0.75em; line-height: 1.5; margin: 8px 0 0 20px; padding: 0;">
+                    <li><strong>Inodo 1:</strong> Se asigna al directorio raíz y se marca como ocupado (F).</li>
+                    <li><strong>Con Punteros Simples (PS):</strong> Solo se ocupa <strong>C1</strong> (contiene los datos del directorio raíz).</li>
+                    <li><strong>Con Punteros Dobles (PD):</strong> Se ocupan <strong>C1</strong> (datos) + <strong>C8</strong> (último clúster, contiene PS que apuntan a C1).</li>
+                    <li><strong>Con Punteros Triples (PT):</strong> Se ocupan <strong>C1</strong> (datos) + <strong>C7</strong> (contiene PS) + <strong>C8</strong> (contiene PD que apuntan a C7).</li>
+                </ul>
+                <p style="color: #1e3a8a; margin-top: 8px; font-size: 0.75em; line-height: 1.5;">
+                    En el PDF generado, los clústeres ocupados aparecen marcados con "F" en la tabla EXT,
+                    y el Inodo 1 muestra su primer puntero apuntando al clúster correspondiente según el tipo de punteros seleccionado.
+                </p>
+            </div>
+        </div>
+
+        <!-- Panel derecho: Explorador EXT -->
+        <div class="panel">
+            <h2>📋 Explorador del Sistema EXT</h2>
+
+            <div class="form-group">
+                <label for="comandoSelect">Comando</label>
+                <select id="comandoSelect" onchange="actualizarFormulario()">
+                    <option value="mkdir">📁 Crear directorio</option>
+                    <option value="addfile">📄 Añadir archivo</option>
+                    <option value="copy">📋 Copiar</option>
+                    <option value="move">✂️ Mover</option>
+                    <option value="delete">🗑️ Eliminar</option>
+                </select>
+            </div>
+
+            <div id="formExtra"></div>
+
+            <button onclick="agregarInstruccion()">➕ Añadir Instrucción</button>
+
+            <div class="divider"></div>
+
+            <h3>📁 Árbol del Sistema de Archivos</h3>
+            <pre id="vista">/ (raíz)</pre>
+
+            <h3>📊 Estadísticas</h3>
+            <div style="padding: 15px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; border: 2px solid #bae6fd;">
+                <div style="margin-bottom: 10px;">
+                    <span style="color: #0c4a6e; font-weight: 600;">Máximo de clústers histórico: </span>
+                    <span class="stats-badge" id="maxClusters">0</span>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <span style="color: #0c4a6e; font-weight: 600;">Clústers en uso: </span>
+                    <span class="stats-badge" id="clustersEnUso">0</span>
+                    <span style="color: #64748b; font-size: 0.85em;"> / </span>
+                    <span style="color: #64748b; font-size: 0.85em;" id="clustersTotal">8</span>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <span style="color: #0c4a6e; font-weight: 600;">Inodos en uso: </span>
+                    <span class="stats-badge" id="inodosEnUso">1</span>
+                    <span style="color: #64748b; font-size: 0.85em;"> / </span>
+                    <span style="color: #64748b; font-size: 0.85em;" id="inodosTotal">4</span>
+                </div>
+                <div style="padding: 10px; background: #fef3c7; border-radius: 8px; border-left: 3px solid #f59e0b;">
+                    <div style="margin-bottom: 6px;">
+                        <span style="color: #92400e; font-weight: 600; font-size: 0.9em;">📏 Máximo REAL por archivo: </span>
+                        <span style="color: #92400e; font-weight: 700;" id="maxClustersPorArchivo">4</span>
+                        <span style="color: #92400e; font-size: 0.85em;"> clusters de datos</span>
+                    </div>
+                    <div style="color: #78350f; font-size: 0.75em; margin-bottom: 4px;">
+                        <strong>Teórico del sistema:</strong> <span id="maxTeorico">4</span> clusters
+                    </div>
+                    <div style="color: #78350f; font-size: 0.75em;" id="formulaMaxClusters">
+                        (2 punteros/inodo × 2 punteros/cluster)
+                    </div>
+                    <div style="color: #78350f; font-size: 0.7em; margin-top: 6px; font-style: italic;" id="explicacionMaximo">
+                        Limitado por espacio disponible
+                    </div>
+                </div>
+            </div>
+
+            <h3>📝 Historial de Instrucciones</h3>
+            <div id="listaInstrucciones">
+                <div class="empty-state">
+                    No hay instrucciones aún. ¡Añade la primera!
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+/* ============================================
+   GENERADOR DE PDF
+   ============================================ */
+function actualizarConfiguracion() {
+    // Leer valores actuales de los campos
+    tipoPunterosActual = document.getElementById('tipoPunteros').value;
+    numClustersActual = parseInt(document.getElementById('divs').value);
+    numInodosActual = parseInt(document.getElementById('inodos').value);
+    punterosPorInodoActual = parseInt(document.getElementById('punterosPorInodo').value);
+    punterosPorClusterActual = parseInt(document.getElementById('punterosPorCluster').value);
+
+    // Actualizar clusters del directorio raíz según la configuración
+    root.clusters = calcularClustersDirectorioRaiz();
+
+    // Reconstruir desde cero para recalcular todos los clusters
+    reconstruirDesdeCero();
+
+    // Actualizar la lista de instrucciones con la nueva configuración
+    actualizarLista();
+}
+
+async function generarPDF() {
+    const divs = parseInt(document.getElementById('divs').value);
+    const inodos = parseInt(document.getElementById('inodos').value);
+    const mostrar_ddr = document.getElementById('ddr').checked;
+    const tipoPunteros = document.getElementById('tipoPunteros').value;
+    const punterosPorInodo = parseInt(document.getElementById('punterosPorInodo').value);
+    const punterosPorCluster = parseInt(document.getElementById('punterosPorCluster').value);
+
+    // Actualizar variables globales para el explorador
+    actualizarConfiguracion();
+
+    try {
+        const url = 'assets/Plantilla_EXT.pdf';
+        const arrayBuffer = await fetch(url).then(res => res.arrayBuffer());
+        const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+        const page = pdfDoc.getPages()[0];
+        const { width, height } = page.getSize();
+
+        const cuadros = [
+            { x: 85.5, y: 31.7, w: 191, h: 534.5, tipo: "EXT" },
+            { x: 276.5, y: 31.7, w: 193, h: 534.5, tipo: "INODOS" },
+            { x: 469.5, y: 31.7, w: 350.4, h: 534.5, tipo: "DIRECTORIO" }
+        ];
+
+        const filas = Math.ceil(divs / 2);
+
+        // Añadir encabezados METADATOS y DATOS con líneas y flechas
+        const yEncabezado = 31.7 + 534.5 + 10;
+        const yLinea = yEncabezado - 5;
+        const tamanoFlecha = 8;
+        const separacionFlechas = 5;
+        
+        // METADATOS
+        const xInicioMetadatos = 50 - 35.5 + 10;
+        const xFinMetadatos = 469.5 - separacionFlechas;
+        const anchoMetadatos = xFinMetadatos - xInicioMetadatos;
+        const xCentroMetadatos = (xInicioMetadatos + xFinMetadatos) / 2;
+        
+        page.drawText("METADATOS", {
+            x: xCentroMetadatos - 35,
+            y: yEncabezado,
+            size: 14,
+            color: PDFLib.rgb(0, 0, 0)
+        });
+        
+        page.drawLine({
+            start: { x: xInicioMetadatos, y: yLinea },
+            end: { x: xFinMetadatos, y: yLinea },
+            color: PDFLib.rgb(0, 0, 0),
+            thickness: 1.5
+        });
+        
+        page.drawLine({
+            start: { x: xInicioMetadatos, y: yLinea },
+            end: { x: xInicioMetadatos + tamanoFlecha, y: yLinea + tamanoFlecha/2 },
+            color: PDFLib.rgb(0, 0, 0),
+            thickness: 1.5
+        });
+        page.drawLine({
+            start: { x: xInicioMetadatos, y: yLinea },
+            end: { x: xInicioMetadatos + tamanoFlecha, y: yLinea - tamanoFlecha/2 },
+            color: PDFLib.rgb(0, 0, 0),
+            thickness: 1.5
+        });
+        
+        page.drawLine({
+            start: { x: xFinMetadatos, y: yLinea },
+            end: { x: xFinMetadatos - tamanoFlecha, y: yLinea + tamanoFlecha/2 },
+            color: PDFLib.rgb(0, 0, 0),
+            thickness: 1.5
+        });
+        page.drawLine({
+            start: { x: xFinMetadatos, y: yLinea },
+            end: { x: xFinMetadatos - tamanoFlecha, y: yLinea - tamanoFlecha/2 },
+            color: PDFLib.rgb(0, 0, 0),
+            thickness: 1.5
+        });
+
+        // DATOS
+        // DATOS
+        const xInicioDatos = 469.5 + separacionFlechas;
+        const xFinDatos = 469.5 + 350.4;
+        const xCentroDatos = (xInicioDatos + xFinDatos) / 2;
+        
+        page.drawText("DATOS", {
+            x: xCentroDatos - 20,
+            y: yEncabezado,
+            size: 14,
+            color: PDFLib.rgb(0, 0, 0)
+        });
+        
+        page.drawLine({
+            start: { x: xInicioDatos, y: yLinea },
+            end: { x: xFinDatos, y: yLinea },
+            color: PDFLib.rgb(0, 0, 0),
+            thickness: 1.5
+        });
+        
+        page.drawLine({
+            start: { x: xInicioDatos, y: yLinea },
+            end: { x: xInicioDatos + tamanoFlecha, y: yLinea + tamanoFlecha/2 },
+            color: PDFLib.rgb(0, 0, 0),
+            thickness: 1.5
+        });
+        page.drawLine({
+            start: { x: xInicioDatos, y: yLinea },
+            end: { x: xInicioDatos + tamanoFlecha, y: yLinea - tamanoFlecha/2 },
+            color: PDFLib.rgb(0, 0, 0),
+            thickness: 1.5
+        });
+        
+        page.drawLine({
+            start: { x: xFinDatos, y: yLinea },
+            end: { x: xFinDatos - tamanoFlecha, y: yLinea + tamanoFlecha/2 },
+            color: PDFLib.rgb(0, 0, 0),
+            thickness: 1.5
+        });
+        page.drawLine({
+            start: { x: xFinDatos, y: yLinea },
+            end: { x: xFinDatos - tamanoFlecha, y: yLinea - tamanoFlecha/2 },
+            color: PDFLib.rgb(0, 0, 0),
+            thickness: 1.5
+        });
+
+        // Determinar etiquetas de punteros
+        let etiquetaInodo = "";
+        let etiquetaCluster = "";
+        
+        if (tipoPunteros === "simples") {
+            etiquetaInodo = "PS";
+            etiquetaCluster = "";
+        } else if (tipoPunteros === "dobles") {
+            etiquetaInodo = "PD";
+            etiquetaCluster = "PS";
+        } else if (tipoPunteros === "triples") {
+            etiquetaInodo = "PT";
+            etiquetaCluster = "PD";
+        }
+
+        cuadros.forEach(cuadro => {
+            const {x, y, w, h, tipo} = cuadro;
+            
+            // Rectángulo principal
+            page.drawRectangle({ 
+                x, y, width: w, height: h, 
+                borderColor: PDFLib.rgb(0, 0, 0), 
+                borderWidth: 1 
+            });
+            
+            if (tipo === "INODOS") {
+                // Línea vertical discontinua en el medio
+                const numSegmentos = 50;
+                const longitudSegmento = h / numSegmentos;
+                for (let i = 0; i < numSegmentos; i += 2) {
+                    page.drawLine({
+                        start: {x: x + w/2, y: y + i * longitudSegmento},
+                        end: {x: x + w/2, y: y + (i + 1) * longitudSegmento},
+                        color: PDFLib.rgb(0, 0, 0),
+                        thickness: 1
+                    });
+                }
+
+                // Líneas horizontales para dividir los INodos
+                const altura_inodo = h / inodos;
+                for (let i = 1; i < inodos; i++) {
+                    page.drawLine({ 
+                        start: {x: x, y: y + i * altura_inodo}, 
+                        end: {x: x + w, y: y + i * altura_inodo}, 
+                        color: PDFLib.rgb(0, 0, 0), 
+                        thickness: 1 
+                    });
+                }
+
+                // Etiquetas de INodos y punteros
+                for (let i = 0; i < inodos; i++) {
+                    const y_inodo = y + h - i * altura_inodo;
+
+                    // Título del inodo (izquierda arriba)
+                    page.drawText(`Inodo ${i + 1}`, {
+                        x: x + 5,
+                        y: y_inodo - 15,
+                        size: 10
+                    });
+
+                    // Estado del inodo en el centro de la mitad izquierda
+                    page.drawText("Disponible", {
+                        x: x + 10,
+                        y: y_inodo - altura_inodo/2 - 3,
+                        size: 11,
+                        color: PDFLib.rgb(0.3, 0.3, 0.3)
+                    });
+
+                    // Si es el Inodo 1 (directorio raíz), agregar "F" al lado
+                    if (i === 0) {
+                        page.drawText("F", {
+                            x: x + 70,
+                            y: y_inodo - altura_inodo/2 - 3,
+                            size: 11,
+                            color: PDFLib.rgb(0, 0, 0)
+                        });
+                    }
+
+                    // Punteros en el inodo (derecha) - distribuidos uniformemente
+                    if (etiquetaInodo) {
+                        const espacioVertical = altura_inodo / (punterosPorInodo + 1);
+                        for (let p = 0; p < punterosPorInodo; p++) {
+                            const yPuntero = y_inodo - espacioVertical * (p + 1);
+
+                            page.drawText(etiquetaInodo, {
+                                x: x + w/2 + 10,
+                                y: yPuntero,
+                                size: 9
+                            });
+
+                            // Agregar coordenadas para el directorio raíz en el primer inodo, primer puntero
+                            if (i === 0 && p === 0) {
+                                let coordenada = "";
+
+                                if (tipoPunteros === "simples") {
+                                    // PS apunta directamente al dato (C1)
+                                    coordenada = "C1";
+                                } else {
+                                    // PD y PT apuntan al último clúster disponible (C8)
+                                    coordenada = `C${divs}`;
+                                }
+
+                                page.drawText(coordenada, {
+                                    x: x + w/2 + 30,
+                                    y: yPuntero,
+                                    size: 9,
+                                    color: PDFLib.rgb(0, 0, 0)
+                                });
+                            }
+                        }
+                    }
+                }
+            } else if (tipo === "DIRECTORIO") {
+                // Línea vertical central sólida
+                page.drawLine({ 
+                    start: {x: x + w/2, y}, 
+                    end: {x: x + w/2, y: y + h}, 
+                    color: PDFLib.rgb(0, 0, 0), 
+                    thickness: 1 
+                });
+
+                // Líneas horizontales
+                const altura_fila = h / filas;
+                for (let i = 1; i < filas; i++) {
+                    page.drawLine({ 
+                        start: {x: x, y: y + i * altura_fila}, 
+                        end: {x: x + w, y: y + i * altura_fila}, 
+                        color: PDFLib.rgb(0, 0, 0), 
+                        thickness: 1 
+                    });
+                }
+
+                // Numeración de clústers con punteros para el directorio raíz
+                let contador = 1;
+                const columnas = [x, x + w/2];
+
+                for (let fila = 0; fila < filas; fila++) {
+                    const y_fila = y + h - fila * altura_fila;
+                    let contadorFila = contador; // Guardar el contador al inicio de la fila
+
+                    columnas.forEach((col, colIdx) => {
+                        if (contador <= divs) {
+                            const numCluster = contador;
+
+                            page.drawText(`C${numCluster}`, {
+                                x: col + 2,
+                                y: y_fila - 10,
+                                size: 8
+                            });
+
+                            // Agregar punteros según el tipo y la posición del clúster
+                            if (tipoPunteros === "triples") {
+                                // C8 (último): contiene los datos del directorio raíz + punteros PD
+                                if (numCluster === divs) {
+                                    const espacioVertical = altura_fila / (punterosPorCluster + 1);
+
+                                    // Agregar todos los punteros PD según lo especificado
+                                    for (let ptr = 0; ptr < punterosPorCluster; ptr++) {
+                                        const yPtr = y_fila - espacioVertical * (ptr + 1) - 10;
+
+                                        page.drawText(etiquetaCluster, {
+                                            x: col + 5,
+                                            y: yPtr,
+                                            size: 8
+                                        });
+
+                                        // Solo el primer PD apunta a C(divs-1)
+                                        if (ptr === 0) {
+                                            page.drawText(`C${divs - 1}`, {
+                                                x: col + 20,
+                                                y: yPtr,
+                                                size: 8
+                                            });
+                                        }
+                                    }
+                                }
+                                // C7 (penúltimo): contiene punteros PS
+                                else if (numCluster === divs - 1) {
+                                    const espacioVertical = altura_fila / (punterosPorCluster + 1);
+
+                                    // Agregar todos los punteros PS según lo especificado
+                                    for (let ptr = 0; ptr < punterosPorCluster; ptr++) {
+                                        const yPtr = y_fila - espacioVertical * (ptr + 1) - 10;
+
+                                        page.drawText("PS", {
+                                            x: col + 5,
+                                            y: yPtr,
+                                            size: 8
+                                        });
+
+                                        // Solo el primer PS apunta a C1
+                                        if (ptr === 0) {
+                                            page.drawText("C1", {
+                                                x: col + 20,
+                                                y: yPtr,
+                                                size: 8
+                                            });
+                                        }
+                                    }
+                                }
+                            } else if (tipoPunteros === "dobles") {
+                                // C8 (último): contiene punteros PS (siempre antes del dato va un PS)
+                                if (numCluster === divs) {
+                                    const espacioVertical = altura_fila / (punterosPorCluster + 1);
+
+                                    // Agregar todos los punteros PS según lo especificado
+                                    for (let ptr = 0; ptr < punterosPorCluster; ptr++) {
+                                        const yPtr = y_fila - espacioVertical * (ptr + 1) - 10;
+
+                                        page.drawText(etiquetaCluster, {
+                                            x: col + 5,
+                                            y: yPtr,
+                                            size: 8
+                                        });
+
+                                        // Solo el primer PS apunta directamente a C1 (dato)
+                                        if (ptr === 0) {
+                                            page.drawText("C1", {
+                                                x: col + 20,
+                                                y: yPtr,
+                                                size: 8
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                            // Para punteros simples no hay punteros intermedios
+
+                            // Tabla del directorio raíz en C1 (columna izquierda - METADATOS)
+                            if (numCluster === 1 && colIdx === 0) {
+                                // Dibujar la tabla en el C1 (columna izquierda donde está)
+                                const anchoColumna = (w / 2) / 3;
+                                // Ajustar altura del encabezado proporcionalmente a la altura de la fila
+                                const alturaEncabezado = Math.min(altura_fila * 0.25, 15);
+                                const margenSuperior = Math.min(altura_fila * 0.15, 10);
+                                const margenInferior = Math.min(altura_fila * 0.1, 5);
+                                const yTablaTop = y_fila - margenSuperior;
+                                const yTablaBottom = y_fila - altura_fila + margenInferior;
+
+                                // Líneas verticales
+                                for (let i = 1; i <= 2; i++) {
+                                    page.drawLine({
+                                        start: { x: col + anchoColumna * i, y: yTablaTop },
+                                        end: { x: col + anchoColumna * i, y: yTablaBottom },
+                                        color: PDFLib.rgb(0, 0, 0),
+                                        thickness: 0.5
+                                    });
+                                }
+
+                                // Línea horizontal (separando encabezados del contenido)
+                                page.drawLine({
+                                    start: { x: col, y: yTablaTop - alturaEncabezado },
+                                    end: { x: col + (w / 2), y: yTablaTop - alturaEncabezado },
+                                    color: PDFLib.rgb(0, 0, 0),
+                                    thickness: 0.5
+                                });
+
+                                // Encabezados de columnas con tamaño de fuente ajustado
+                                const encabezados = ["N", "T", "Inodo"];
+                                const tamanoFuente = Math.min(altura_fila * 0.15, 8);
+                                encabezados.forEach((titulo, idx) => {
+                                    page.drawText(titulo, {
+                                        x: col + anchoColumna * idx + anchoColumna / 2 - tamanoFuente / 2,
+                                        y: yTablaTop - alturaEncabezado / 2 - tamanoFuente / 3,
+                                        size: tamanoFuente,
+                                        color: PDFLib.rgb(0, 0, 0)
+                                    });
+                                });
+                            }
+
+                            contador++;
+                        }
+                    });
+                }
+            } else if (tipo === "EXT") {
+                // Línea vertical central sólida
+                page.drawLine({ 
+                    start: {x: x + w/2, y}, 
+                    end: {x: x + w/2, y: y + h}, 
+                    color: PDFLib.rgb(0, 0, 0), 
+                    thickness: 1 
+                });
+
+                // Líneas horizontales
+                const altura_fila = h / filas;
+                for (let i = 1; i < filas; i++) {
+                    page.drawLine({ 
+                        start: {x: x, y: y + i * altura_fila}, 
+                        end: {x: x + w, y: y + i * altura_fila}, 
+                        color: PDFLib.rgb(0, 0, 0), 
+                        thickness: 1 
+                    });
+                }
+
+                // Numeración de clústers
+                let contador = 1;
+                const columnas = [x, x + w/2];
+
+                // Determinar qué clústeres están en uso según el tipo de punteros
+                let clustersEnUso = [];
+                if (tipoPunteros === "simples") {
+                    clustersEnUso = [1]; // Solo C1
+                } else if (tipoPunteros === "dobles") {
+                    clustersEnUso = [1, divs]; // C1 y C8
+                } else if (tipoPunteros === "triples") {
+                    clustersEnUso = [1, divs - 1, divs]; // C1, C7 y C8
+                }
+
+                for (let fila = 0; fila < filas; fila++) {
+                    const y_fila = y + h - fila * altura_fila;
+                    columnas.forEach((col, colIdx) => {
+                        if (contador <= divs) {
+                            page.drawText(`C${contador}`, {
+                                x: col + 2,
+                                y: y_fila - 10,
+                                size: 8
+                            });
+
+                            // Marcar con "F" si el clúster está en uso
+                            if (mostrar_ddr && clustersEnUso.includes(contador)) {
+                                const espacioHorizontal = (w / 2) / 3;
+                                page.drawText("F", {
+                                    x: col + espacioHorizontal / 2 - 5,
+                                    y: y_fila - altura_fila / 2,
+                                    size: 10,
+                                    color: PDFLib.rgb(0, 0, 0)
+                                });
+                            }
+
+                            contador++;
+                        }
+                    });
+                }
+
+                // Leyenda DDR debajo de la tabla
+                if (mostrar_ddr) {
+                    const yLeyenda = y - 20; // 20 puntos debajo de la tabla
+                    const etiquetas = ["D", "D", "R"];
+                    const espacioHorizontal = (w / 2) / etiquetas.length;
+
+                    columnas.forEach((colBase, colIdx) => {
+                        etiquetas.forEach((etiqueta, idx) => {
+                            page.drawText(etiqueta, {
+                                x: colBase + espacioHorizontal * idx + espacioHorizontal / 2 - 5,
+                                y: yLeyenda,
+                                size: 10,
+                                color: PDFLib.rgb(0, 0, 0)
+                            });
+                        });
+                    });
+                }
+            }
+        });
+
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = "Plantilla_EXT.pdf";
+        link.click();
+
+        // Mensaje de éxito
+        mostrarNotificacion("✅ PDF generado exitosamente", "success");
+
+    } catch (err) {
+        console.error("Error generando PDF:", err);
+        mostrarNotificacion("❌ Error al generar el PDF. Verifica que el archivo de plantilla exista.", "error");
+    }
+}
+
+/* ============================================
+   EXPLORADOR DEL SISTEMA EXT
+   ============================================ */
+let root = {nombre: "/", tipo: "dir", hijos: [], clusters: 0};
+let instrucciones = [];
+let maxClustersHistorico = 0;
+let tipoPunterosActual = "dobles"; // Valor por defecto
+let numClustersActual = 8; // Valor por defecto
+
+// Variables para almacenar la configuración de punteros
+let punterosPorInodoActual = 2; // Valor por defecto
+let punterosPorClusterActual = 2; // Valor por defecto
+let numInodosActual = 4; // Valor por defecto
+
+// Función para calcular clusters del directorio raíz según el tipo de punteros
+function calcularClustersDirectorioRaiz() {
+    if (tipoPunterosActual === "simples") {
+        return 1; // Solo C1
+    } else if (tipoPunterosActual === "dobles") {
+        return 2; // C1 + C8
+    } else if (tipoPunterosActual === "triples") {
+        return 3; // C1 + C7 + C8
+    }
+    return 0;
+}
+
+// Función para calcular el total de clusters que ocupa un archivo/directorio
+function calcularClustersReales(clustersDeHatos, tipoElemento = "file") {
+    // Los directorios siempre ocupan 1 cluster de datos
+    if (tipoElemento === "dir") {
+        clustersDeHatos = 1;
+    }
+
+    if (tipoPunterosActual === "simples") {
+        // Punteros simples: solo los datos
+        return clustersDeHatos;
+    } else if (tipoPunterosActual === "dobles") {
+        // Punteros dobles: datos + clusters de punteros simples
+        // Cada cluster puede almacenar punterosPorClusterActual punteros simples
+        const clustersPS = Math.ceil(clustersDeHatos / punterosPorClusterActual);
+        return clustersDeHatos + clustersPS;
+    } else if (tipoPunterosActual === "triples") {
+        // Punteros triples: datos + clusters PS + clusters PD
+        const clustersPS = Math.ceil(clustersDeHatos / punterosPorClusterActual);
+        const clustersPD = Math.ceil(clustersPS / punterosPorClusterActual);
+        return clustersDeHatos + clustersPS + clustersPD;
+    }
+    return clustersDeHatos;
+}
+
+// Función para calcular el máximo teórico de clusters de datos según el sistema de punteros
+function calcularMaximoTeoricoDatos() {
+    if (tipoPunterosActual === "simples") {
+        // Con punteros simples: punterosPorInodo punteros directos
+        return punterosPorInodoActual;
+    } else if (tipoPunterosActual === "dobles") {
+        // Con punteros dobles: punterosPorInodo × punterosPorCluster
+        return punterosPorInodoActual * punterosPorClusterActual;
+    } else if (tipoPunterosActual === "triples") {
+        // Con punteros triples: punterosPorInodo × punterosPorCluster × punterosPorCluster
+        return punterosPorInodoActual * punterosPorClusterActual * punterosPorClusterActual;
+    }
+    return 1;
+}
+
+// Función para calcular el máximo REAL de clusters de datos que puede tener un archivo
+// considerando el espacio disponible en el sistema
+function calcularMaximoClustersDatos() {
+    // 1. Calcular clusters libres actualmente
+    const clustersLibres = calcularClustersLibres();
+
+    // 2. Verificar que haya al menos un inodo libre
+    const inodosLibres = calcularInodosLibres();
+    if (inodosLibres < 1) {
+        return 0; // No se puede crear ningún archivo sin inodos
+    }
+
+    // 3. Calcular el máximo teórico según el sistema de punteros
+    const maxTeorico = calcularMaximoTeoricoDatos();
+
+    // 4. Encontrar el máximo real mediante búsqueda binaria
+    // Tenemos que encontrar el mayor número N de clusters de datos tal que:
+    // calcularClustersReales(N) <= clustersLibres
+
+    let maxReal = 0;
+
+    if (tipoPunterosActual === "simples") {
+        // Con punteros simples: clusters reales = clusters de datos
+        // Máximo = min(maxTeorico, clustersLibres)
+        maxReal = Math.min(maxTeorico, clustersLibres);
+    } else if (tipoPunterosActual === "dobles") {
+        // Con punteros dobles: necesitamos datos + clusters para PS
+        // clustersReales = datos + ceil(datos / punterosPorCluster)
+        // Resolver: datos + ceil(datos / punterosPorCluster) <= clustersLibres
+
+        for (let datos = 1; datos <= Math.min(maxTeorico, clustersLibres); datos++) {
+            const clustersPS = Math.ceil(datos / punterosPorClusterActual);
+            const total = datos + clustersPS;
+
+            if (total <= clustersLibres) {
+                maxReal = datos;
+            } else {
+                break;
+            }
+        }
+    } else if (tipoPunterosActual === "triples") {
+        // Con punteros triples: necesitamos datos + clusters PS + clusters PD
+        // clustersReales = datos + ceil(datos/ppc) + ceil(ceil(datos/ppc)/ppc)
+
+        for (let datos = 1; datos <= Math.min(maxTeorico, clustersLibres); datos++) {
+            const clustersPS = Math.ceil(datos / punterosPorClusterActual);
+            const clustersPD = Math.ceil(clustersPS / punterosPorClusterActual);
+            const total = datos + clustersPS + clustersPD;
+
+            if (total <= clustersLibres) {
+                maxReal = datos;
+            } else {
+                break;
+            }
+        }
+    }
+
+    return maxReal;
+}
+
+// Función para contar cuántos inodos están en uso
+function contarInodosEnUso(nodo = root) {
+    let total = 1; // El nodo actual usa 1 inodo
+    if (nodo.tipo === "dir" && nodo.hijos) {
+        nodo.hijos.forEach(h => {
+            total += contarInodosEnUso(h);
+        });
+    }
+    return total;
+}
+
+// Función para calcular clusters libres
+function calcularClustersLibres() {
+    const usados = contarClusters(root);
+    return numClustersActual - usados;
+}
+
+// Función para calcular inodos libres
+function calcularInodosLibres() {
+    const usados = contarInodosEnUso(root);
+    return numInodosActual - usados;
+}
+
+function buscarNodo(ruta, nodo = root) {
+    if (ruta === "/") return root;
+    const partes = ruta.split("/").filter(Boolean);
+    let actual = nodo;
+    for (const p of partes) {
+        actual = actual.hijos.find(h => h.nombre === p);
+        if (!actual) return null;
+    }
+    return actual;
+}
+
+function generarDirectorios(nodo = root, path = "/") {
+    let dirs = [path];
+    nodo.hijos.filter(h => h.tipo === "dir").forEach(h => {
+        const subPath = path === "/" ? `/${h.nombre}` : `${path}/${h.nombre}`;
+        dirs = dirs.concat(generarDirectorios(h, subPath));
+    });
+    return dirs;
+}
+
+function generarElementos(nodo = root, path = "/") {
+    let elems = [];
+    if (path !== "/") elems.push({nombre: path, tipo: nodo.tipo});
+    if (nodo.tipo === "dir") {
+        nodo.hijos.forEach(h => {
+            const subPath = path === "/" ? `/${h.nombre}` : `${path}/${h.nombre}`;
+            elems = elems.concat(generarElementos(h, subPath));
+        });
+    }
+    return elems;
+}
+
+function actualizarFormulario() {
+    const cmd = document.getElementById('comandoSelect').value;
+    const form = document.getElementById('formExtra');
+    form.innerHTML = "";
+
+    if (cmd === "mkdir") {
+        form.innerHTML = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group">
+                    <label for="nombre">Nombre del directorio</label>
+                    <input type="text" id="nombre" placeholder="ej. juegos">
+                </div>
+                <div class="form-group">
+                    <label for="rutaSelect">Ubicación destino</label>
+                    <select id="rutaSelect"></select>
+                </div>
+            </div>
+        `;
+        llenarDirectorios("rutaSelect");
+    }
+    else if (cmd === "addfile") {
+        form.innerHTML = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group">
+                    <label for="nombre">Nombre del archivo</label>
+                    <input type="text" id="nombre" placeholder="ej. documento.txt">
+                </div>
+                <div class="form-group">
+                    <label for="clusters">Número de clústers</label>
+                    <input type="number" id="clusters" value="1" min="1">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="rutaSelect">Ubicación destino</label>
+                    <select id="rutaSelect"></select>
+                </div>
+            </div>
+        `;
+        llenarDirectorios("rutaSelect");
+    }
+    else if (cmd === "copy" || cmd === "move") {
+        form.innerHTML = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group">
+                    <label for="elementoSelect">Elemento a ${cmd === "copy" ? "copiar" : "mover"}</label>
+                    <select id="elementoSelect"></select>
+                </div>
+                <div class="form-group">
+                    <label for="rutaSelect">Ubicación destino</label>
+                    <select id="rutaSelect"></select>
+                </div>
+            </div>
+        `;
+        llenarElementos("elementoSelect");
+        llenarDirectorios("rutaSelect");
+    }
+    else if (cmd === "delete") {
+        form.innerHTML = `
+            <div class="form-group">
+                <label for="elementoSelect">Elemento a eliminar</label>
+                <select id="elementoSelect"></select>
+            </div>
+        `;
+        llenarElementos("elementoSelect");
+    }
+}
+
+function llenarDirectorios(id) {
+    const select = document.getElementById(id);
+    const dirs = generarDirectorios();
+    select.innerHTML = "";
+    dirs.forEach(d => {
+        const opt = document.createElement("option");
+        opt.value = d;
+        opt.textContent = d;
+        select.appendChild(opt);
+    });
+}
+
+function llenarElementos(id) {
+    const select = document.getElementById(id);
+    const elems = generarElementos();
+    select.innerHTML = "";
+    elems.forEach(e => {
+        const opt = document.createElement("option");
+        opt.value = e.nombre;
+        opt.textContent = `${e.tipo === "dir" ? "📁" : "📄"} ${e.nombre}`;
+        select.appendChild(opt);
+    });
+}
+
+function agregarInstruccion() {
+    const cmd = document.getElementById('comandoSelect').value;
+    let instr = {cmd};
+
+    try {
+        if (cmd === "mkdir") {
+            instr.nombre = document.getElementById('nombre').value.trim();
+            if (!instr.nombre) throw new Error("El nombre no puede estar vacío");
+            instr.dest = document.getElementById('rutaSelect').value;
+
+            // Validar inodos disponibles
+            const inodosLibres = calcularInodosLibres();
+            if (inodosLibres < 1) {
+                throw new Error(`No hay suficientes inodos disponibles. Inodos libres: ${inodosLibres}`);
+            }
+
+            // Calcular clusters que ocupará el directorio
+            const clustersNecesarios = calcularClustersReales(1, "dir");
+            const clustersLibres = calcularClustersLibres();
+
+            if (clustersNecesarios > clustersLibres) {
+                throw new Error(`No hay suficientes clusters para crear este directorio. Necesarios: ${clustersNecesarios}, Libres: ${clustersLibres}`);
+            }
+        }
+        else if (cmd === "addfile") {
+            instr.nombre = document.getElementById('nombre').value.trim();
+            if (!instr.nombre) throw new Error("El nombre no puede estar vacío");
+            instr.clusters = parseInt(document.getElementById('clusters').value);
+            if (instr.clusters < 1) throw new Error("El número de clústers debe ser mayor a 0");
+
+            // Validar que no exceda el máximo permitido por el sistema de punteros
+            const maxPermitido = calcularMaximoClustersDatos();
+            if (instr.clusters > maxPermitido) {
+                throw new Error(`Con ${tipoPunterosActual} y ${punterosPorClusterActual} punteros por cluster, el máximo es ${maxPermitido} clusters de datos`);
+            }
+
+            // Validar inodos disponibles
+            const inodosLibres = calcularInodosLibres();
+            if (inodosLibres < 1) {
+                throw new Error(`No hay suficientes inodos disponibles. Inodos libres: ${inodosLibres}`);
+            }
+
+            // Calcular clusters totales que ocupará el archivo (datos + punteros)
+            const clustersNecesarios = calcularClustersReales(instr.clusters, "file");
+            const clustersLibres = calcularClustersLibres();
+
+            if (clustersNecesarios > clustersLibres) {
+                throw new Error(`No hay suficientes clusters para crear este archivo. Necesarios: ${clustersNecesarios}, Libres: ${clustersLibres}`);
+            }
+
+            instr.dest = document.getElementById('rutaSelect').value;
+        }
+        else if (cmd === "copy") {
+            instr.elemento = document.getElementById('elementoSelect').value;
+            instr.dest = document.getElementById('rutaSelect').value;
+
+            // Validar inodos disponibles para la copia
+            const inodosLibres = calcularInodosLibres();
+            if (inodosLibres < 1) {
+                throw new Error(`No hay suficientes inodos disponibles para copiar. Inodos libres: ${inodosLibres}`);
+            }
+
+            // Validar clusters disponibles para la copia
+            const elem = buscarNodo(instr.elemento);
+            if (elem) {
+                const clustersNecesarios = elem.clusters;
+                const clustersLibres = calcularClustersLibres();
+
+                if (clustersNecesarios > clustersLibres) {
+                    throw new Error(`No hay suficientes clusters para copiar este elemento. Necesarios: ${clustersNecesarios}, Libres: ${clustersLibres}`);
+                }
+            }
+        }
+        else if (cmd === "move") {
+            instr.elemento = document.getElementById('elementoSelect').value;
+            instr.dest = document.getElementById('rutaSelect').value;
+        }
+        else if (cmd === "delete") {
+            instr.elemento = document.getElementById('elementoSelect').value;
+        }
+
+        instrucciones.push(instr);
+        actualizarLista();
+        ejecutarInstr(instr);
+        recalcularClusters();
+        actualizarVista();
+        recalcularMaximoClusters();
+        
+        mostrarNotificacion("✅ Instrucción añadida correctamente", "success");
+    } catch (error) {
+        mostrarNotificacion("❌ " + error.message, "error");
+    }
+}
+
+function actualizarLista() {
+    const lista = document.getElementById('listaInstrucciones');
+
+    // Generar instrucciones del directorio raíz
+    let instruccionesRaiz = generarInstruccionesDirectorioRaiz();
+
+    if (instrucciones.length === 0) {
+        // Mostrar solo las instrucciones del directorio raíz
+        lista.innerHTML = instruccionesRaiz;
+        return;
+    }
+
+    lista.innerHTML = instruccionesRaiz;
+
+    instrucciones.forEach((i, idx) => {
+        const div = document.createElement('div');
+        div.className = "instr-item";
+
+        let descripcion = "";
+
+        if (i.cmd === "mkdir") {
+            const nombreFinal = i.finalName || i.nombre;
+            descripcion = `Crear directorio "${nombreFinal}" en ${i.dest}`;
+        } else if (i.cmd === "addfile") {
+            const nombreFinal = i.finalName || i.nombre;
+            const clustersReales = calcularClustersReales(i.clusters, "file");
+            descripcion = `Crear archivo "${nombreFinal}" de tamaño ${i.clusters} cluster${i.clusters !== 1 ? 's' : ''} (${clustersReales} total) en ${i.dest}`;
+        } else if (i.cmd === "copy") {
+            const nombreFinal = i.finalName || i.elemento.split("/").pop();
+            descripcion = `Copiar "${i.elemento}" a ${i.dest}${i.finalName ? ` como "${nombreFinal}"` : ''}`;
+        } else if (i.cmd === "move") {
+            const nombreFinal = i.finalName || i.elemento.split("/").pop();
+            descripcion = `Mover "${i.elemento}" a ${i.dest}${i.finalName ? ` como "${nombreFinal}"` : ''}`;
+        } else if (i.cmd === "delete") {
+            descripcion = `Eliminar "${i.elemento}"`;
+        }
+
+        div.innerHTML = `
+            <span class="instr-text">${idx + 1}. ${descripcion}</span>
+            <button class="btn-small" onclick="borrarInstr(${idx})">❌</button>
+        `;
+        lista.appendChild(div);
+    });
+}
+
+function generarInstruccionesDirectorioRaiz() {
+    let clustersOcupados = [];
+    let descripcionPunteros = "";
+
+    if (tipoPunterosActual === "simples") {
+        clustersOcupados = ["C1"];
+        descripcionPunteros = "PS → C1 (datos)";
+    } else if (tipoPunterosActual === "dobles") {
+        clustersOcupados = ["C1", `C${numClustersActual}`];
+        descripcionPunteros = `PD → C${numClustersActual} → PS → C1 (datos)`;
+    } else if (tipoPunterosActual === "triples") {
+        clustersOcupados = ["C1", `C${numClustersActual - 1}`, `C${numClustersActual}`];
+        descripcionPunteros = `PT → C${numClustersActual} → PD → C${numClustersActual - 1} → PS → C1 (datos)`;
+    }
+
+    const clustersTexto = clustersOcupados.join(", ");
+
+    return `
+        <div style="background: #e0f2fe; padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #0284c7;">
+            <div style="font-weight: 600; color: #0c4a6e; margin-bottom: 8px; font-size: 0.9em;">
+                🏠 Inicialización del Sistema - Directorio Raíz
+            </div>
+            <div style="color: #075985; font-size: 0.8em; line-height: 1.6;">
+                <div style="margin-bottom: 6px;">
+                    <strong>1. Asignar Inodo 1</strong> al directorio raíz (/) y marcarlo como ocupado (F)
+                </div>
+                <div style="margin-bottom: 6px;">
+                    <strong>2. Ocupar clusters:</strong> ${clustersTexto}
+                </div>
+                <div style="margin-bottom: 6px;">
+                    <strong>3. Cadena de punteros:</strong> Inodo 1 → ${descripcionPunteros}
+                </div>
+                <div style="margin-top: 8px; padding: 6px; background: #bae6fd; border-radius: 4px; font-size: 0.75em;">
+                    💡 <strong>Tipo de punteros:</strong> ${tipoPunterosActual.charAt(0).toUpperCase() + tipoPunterosActual.slice(1)}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function borrarInstr(idx) {
+    instrucciones.splice(idx, 1);
+    actualizarLista();
+    reconstruirDesdeCero();
+    mostrarNotificacion("🗑️ Instrucción eliminada", "info");
+}
+
+function ejecutarInstr(i) {
+    if (i.cmd === "mkdir") {
+        const dest = buscarNodo(i.dest);
+        if (dest) {
+            let nombreFinal = i.finalName ?? i.nombre;
+            if (i.finalName === undefined) {
+                const existenteIdx = dest.hijos.findIndex(h => h.nombre === nombreFinal);
+                if (existenteIdx !== -1) {
+                    const reemplazar = i.reemplazar ?? confirm(`Ya existe \"${nombreFinal}\" en ${i.dest}. ¿Deseas reemplazarlo? (Cancelar para renombrar)`);
+                    if (reemplazar) {
+                        dest.hijos.splice(existenteIdx, 1);
+                        i.reemplazar = true;
+                    } else {
+                        i.reemplazar = false;
+                        let nuevo = prompt("Introduce un nuevo nombre:", `${nombreFinal} (1)`);
+                        if (!nuevo) { mostrarNotificacion("ℹ️ Operación cancelada", "info"); return; }
+                        nuevo = nuevo.trim();
+                        while (dest.hijos.find(h => h.nombre === nuevo)) {
+                            nuevo = prompt("Ese nombre ya existe. Introduce otro nombre:", `${nuevo} (1)`);
+                            if (!nuevo) { mostrarNotificacion("ℹ️ Operación cancelada", "info"); return; }
+                            nuevo = nuevo.trim();
+                        }
+                        nombreFinal = nuevo;
+                        i.finalName = nombreFinal;
+                    }
+                }
+            }
+            // Calcular clusters reales para el directorio
+            const clustersReales = calcularClustersReales(1, "dir");
+            dest.hijos.push({nombre: nombreFinal, tipo: "dir", hijos: [], clusters: clustersReales, clustersDatos: 1});
+        }
+    }
+    else if (i.cmd === "addfile") {
+        const dest = buscarNodo(i.dest);
+        if (dest) {
+            let nombreFinal = i.finalName ?? i.nombre;
+            if (i.finalName === undefined) {
+                const existenteIdx = dest.hijos.findIndex(h => h.nombre === nombreFinal);
+                if (existenteIdx !== -1) {
+                    const reemplazar = i.reemplazar ?? confirm(`Ya existe \"${nombreFinal}\" en ${i.dest}. ¿Deseas reemplazarlo? (Cancelar para renombrar)`);
+                    if (reemplazar) {
+                        dest.hijos.splice(existenteIdx, 1);
+                        i.reemplazar = true;
+                    } else {
+                        i.reemplazar = false;
+                        let nuevo = prompt("Introduce un nuevo nombre:", `${nombreFinal} (1)`);
+                        if (!nuevo) { mostrarNotificacion("ℹ️ Operación cancelada", "info"); return; }
+                        nuevo = nuevo.trim();
+                        while (dest.hijos.find(h => h.nombre === nuevo)) {
+                            nuevo = prompt("Ese nombre ya existe. Introduce otro nombre:", `${nuevo} (1)`);
+                            if (!nuevo) { mostrarNotificacion("ℹ️ Operación cancelada", "info"); return; }
+                            nuevo = nuevo.trim();
+                        }
+                        nombreFinal = nuevo;
+                        i.finalName = nombreFinal;
+                    }
+                }
+            }
+            // Calcular clusters reales para el archivo
+            const clustersReales = calcularClustersReales(i.clusters, "file");
+            dest.hijos.push({nombre: nombreFinal, tipo: "file", clusters: clustersReales, clustersDatos: i.clusters});
+        }
+    }
+    else if (i.cmd === "copy") {
+        const elem = buscarNodo(i.elemento);
+        const dest = buscarNodo(i.dest);
+        if (elem && dest) {
+            const copia = JSON.parse(JSON.stringify(elem));
+            let nombreFinal = i.finalName ?? copia.nombre;
+            if (i.finalName === undefined) {
+                const existenteIdx = dest.hijos.findIndex(h => h.nombre === nombreFinal);
+                if (existenteIdx !== -1) {
+                    const reemplazar = i.reemplazar ?? confirm(`Ya existe \"${nombreFinal}\" en ${i.dest}. ¿Deseas reemplazarlo? (Cancelar para renombrar)`);
+                    if (reemplazar) {
+                        dest.hijos.splice(existenteIdx, 1);
+                        i.reemplazar = true;
+                    } else {
+                        i.reemplazar = false;
+                        let nuevo = prompt("Introduce un nuevo nombre:", `${nombreFinal} - copia`);
+                        if (!nuevo) { mostrarNotificacion("ℹ️ Operación cancelada", "info"); return; }
+                        nuevo = nuevo.trim();
+                        while (dest.hijos.find(h => h.nombre === nuevo)) {
+                            nuevo = prompt("Ese nombre ya existe. Introduce otro nombre:", `${nuevo} (1)`);
+                            if (!nuevo) { mostrarNotificacion("ℹ️ Operación cancelada", "info"); return; }
+                            nuevo = nuevo.trim();
+                        }
+                        nombreFinal = nuevo;
+                        i.finalName = nombreFinal;
+                    }
+                }
+            }
+            copia.nombre = nombreFinal;
+            dest.hijos.push(copia);
+        }
+    }
+    else if (i.cmd === "move") {
+        const elem = buscarNodo(i.elemento);
+        const partes = i.elemento.split("/").filter(Boolean);
+        const nombreOriginal = partes.pop();
+        const parent = buscarNodo("/" + partes.join("/"));
+        const dest = buscarNodo(i.dest);
+        if (elem && parent && dest) {
+            let nombreFinal = i.finalName ?? nombreOriginal;
+            if (i.finalName === undefined) {
+                const existenteIdx = dest.hijos.findIndex(h => h.nombre === nombreFinal);
+                if (existenteIdx !== -1) {
+                    const reemplazar = i.reemplazar ?? confirm(`Ya existe \"${nombreFinal}\" en ${i.dest}. ¿Deseas reemplazarlo? (Cancelar para renombrar)`);
+                    if (reemplazar) {
+                        dest.hijos.splice(existenteIdx, 1);
+                        i.reemplazar = true;
+                    } else {
+                        i.reemplazar = false;
+                        let nuevo = prompt("Introduce un nuevo nombre:", `${nombreFinal} (1)`);
+                        if (!nuevo) { mostrarNotificacion("ℹ️ Operación cancelada", "info"); return; }
+                        nuevo = nuevo.trim();
+                        while (dest.hijos.find(h => h.nombre === nuevo)) {
+                            nuevo = prompt("Ese nombre ya existe. Introduce otro nombre:", `${nuevo} (1)`);
+                            if (!nuevo) { mostrarNotificacion("ℹ️ Operación cancelada", "info"); return; }
+                            nuevo = nuevo.trim();
+                        }
+                        nombreFinal = nuevo;
+                        i.finalName = nombreFinal;
+                    }
+                }
+            }
+            // Quitar del padre original y mover al destino con el nombre final
+            parent.hijos = parent.hijos.filter(h => h.nombre !== nombreOriginal);
+            elem.nombre = nombreFinal;
+            dest.hijos.push(elem);
+        }
+    }
+    else if (i.cmd === "delete") {
+        const partes = i.elemento.split("/").filter(Boolean);
+        const nombre = partes.pop();
+        const parent = buscarNodo("/" + partes.join("/"));
+        if (parent) parent.hijos = parent.hijos.filter(h => h.nombre !== nombre);
+    }
+}
+
+function recalcularClusters() {
+    const usar = contarClusters(root);
+    const inodosUso = contarInodosEnUso(root);
+    const maxDatosReal = calcularMaximoClustersDatos();
+    const maxTeorico = calcularMaximoTeoricoDatos();
+    const clustersLibres = calcularClustersLibres();
+    const inodosLibres = calcularInodosLibres();
+
+    document.getElementById("maxClusters").textContent = Math.max(maxClustersHistorico, usar);
+    document.getElementById("clustersEnUso").textContent = usar;
+    document.getElementById("clustersTotal").textContent = numClustersActual;
+    document.getElementById("inodosEnUso").textContent = inodosUso;
+    document.getElementById("inodosTotal").textContent = numInodosActual;
+    document.getElementById("maxClustersPorArchivo").textContent = maxDatosReal;
+    document.getElementById("maxTeorico").textContent = maxTeorico;
+
+    // Actualizar la fórmula según el tipo de punteros
+    let formula = "";
+    if (tipoPunterosActual === "simples") {
+        formula = `(${punterosPorInodoActual} punteros simples por inodo)`;
+    } else if (tipoPunterosActual === "dobles") {
+        formula = `(${punterosPorInodoActual} punteros/inodo × ${punterosPorClusterActual} punteros/cluster)`;
+    } else if (tipoPunterosActual === "triples") {
+        formula = `(${punterosPorInodoActual} × ${punterosPorClusterActual} × ${punterosPorClusterActual})`;
+    }
+    document.getElementById("formulaMaxClusters").textContent = formula;
+
+    // Explicar por qué está limitado
+    let explicacion = "";
+    if (inodosLibres < 1) {
+        explicacion = "⚠️ No hay inodos libres disponibles";
+    } else if (maxDatosReal === 0) {
+        explicacion = "⚠️ No hay suficientes clusters libres";
+    } else if (maxDatosReal < maxTeorico) {
+        const clustersNecesarios = calcularClustersReales(maxTeorico, "file");
+        explicacion = `Limitado por espacio (necesitarías ${clustersNecesarios} clusters para el máximo teórico, solo hay ${clustersLibres} libres)`;
+    } else {
+        explicacion = `✓ Espacio suficiente para el máximo teórico`;
+    }
+    document.getElementById("explicacionMaximo").textContent = explicacion;
+}
+
+function contarClusters(nodo) {
+    let total = 0;
+    // Ahora el root también cuenta sus clusters
+    total += (nodo.clusters || 0);
+    if (nodo.tipo === "dir") nodo.hijos.forEach(h => total += contarClusters(h));
+    return total;
+}
+
+function actualizarVista() {
+    const pre = document.getElementById('vista');
+    pre.textContent = imprimirArbol(root);
+}
+
+function imprimirArbol(nodo, pref = "", esUltimo = true) {
+    let out = "";
+    if (nodo === root) {
+        out = "📁 / (raíz) - (" + (nodo.clusters || 0) + " clúster" + (nodo.clusters !== 1 ? "s" : "") + ")\n";
+    } else {
+        const simbolo = esUltimo ? "└─ " : "├─ ";
+        const clusterInfo = nodo.clustersDatos
+            ? ` (${nodo.clustersDatos} dato${nodo.clustersDatos !== 1 ? 's' : ''} = ${nodo.clusters} total)`
+            : ` (${nodo.clusters} clúster${nodo.clusters !== 1 ? 's' : ''})`;
+        out = pref + simbolo + (nodo.tipo === "dir" ? "📁 " : "📄 ") + nodo.nombre + clusterInfo + "\n";
+    }
+
+    if (nodo.hijos && nodo.hijos.length > 0) {
+        nodo.hijos.forEach((h, idx) => {
+            const esUltimoHijo = idx === nodo.hijos.length - 1;
+            const nuevoPrefix = nodo === root ? "" : pref + (esUltimo ? "   " : "│  ");
+            out += imprimirArbol(h, nuevoPrefix, esUltimoHijo);
+        });
+    }
+    return out;
+}
+
+
+function reconstruirDesdeCero() {
+    root = {nombre: "/", tipo: "dir", hijos: [], clusters: calcularClustersDirectorioRaiz()};
+    instrucciones.forEach(i => ejecutarInstr(i));
+    recalcularClusters();
+    actualizarVista();
+    recalcularMaximoClusters();
+}
+
+// Calcula el máximo número de clústers usados simultáneamente a lo largo de toda la historia
+function recalcularMaximoClusters() {
+    // Simular desde el principio, guardando y restaurando estado
+    const snapshotInstrucciones = JSON.parse(JSON.stringify(instrucciones));
+
+    // Simulación en un árbol temporal, respetando decisiones persistidas (finalName/reemplazar)
+    let tempRoot = {nombre: "/", tipo: "dir", hijos: [], clusters: 0};
+    const aplicar = (i) => {
+        // Crear una copia para no mutar la instrucción original durante simulación
+        const sim = JSON.parse(JSON.stringify(i));
+        // Reutilizar la lógica real aplicándola sobre el árbol temporal
+        const originalRoot = root;
+        root = tempRoot;
+        try {
+            ejecutarInstr(sim);
+        } finally {
+            tempRoot = root;
+            root = originalRoot;
+        }
+    };
+
+    let maximo = 0;
+    let actual = 0;
+    const contar = (nodo) => {
+        let total = 0;
+        // Ahora el root también cuenta sus clusters
+        total += (nodo.clusters || 0);
+        if (nodo.tipo === "dir") nodo.hijos.forEach(h => total += contar(h));
+        return total;
+    };
+
+    // Recorremos la historia y tras cada operación medimos el uso actual
+    tempRoot = {nombre: "/", tipo: "dir", hijos: [], clusters: calcularClustersDirectorioRaiz()};
+    // Contar el estado inicial (directorio raíz)
+    actual = contar(tempRoot);
+    if (actual > maximo) maximo = actual;
+
+    for (const ins of snapshotInstrucciones) {
+        aplicar(ins);
+        actual = contar(tempRoot);
+        if (actual > maximo) maximo = actual;
+    }
+
+    maxClustersHistorico = maximo;
+    // Refrescar la UI
+    const usar = contarClusters(root);
+    document.getElementById("maxClusters").textContent = Math.max(maxClustersHistorico, usar);
+}
+
+function mostrarNotificacion(mensaje, tipo) {
+    // Simple alert por ahora - puedes mejorar esto con una librería de notificaciones
+    console.log(`[${tipo.toUpperCase()}] ${mensaje}`);
+}
+
+// Inicialización
+actualizarFormulario();
+actualizarVista();
+actualizarConfiguracion(); // Mostrar instrucciones iniciales del directorio raíz
+
+// Animación inversa al navegar a inicio
+document.getElementById('homeLink').addEventListener('click', function(ev) {
+    ev.preventDefault();
+    const href = this.getAttribute('href');
+    document.body.classList.add('leaving');
+    setTimeout(() => { window.location.href = href; }, 320);
+});
+</script>
+</body>
+</html>

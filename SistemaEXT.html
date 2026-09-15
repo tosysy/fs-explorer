@@ -3,19 +3,82 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sistema EXT</title>
+<title>Sistema EXT — FS Explorer</title>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
 <link rel="stylesheet" href="styles.css">
-
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+    .info-box {
+        background: rgba(52,211,153,0.06);
+        border: 1px solid rgba(52,211,153,0.2);
+        border-left: 3px solid #34d399;
+        border-radius: 8px;
+        padding: 14px 16px;
+    }
+    .info-box strong { color: #34d399; font-size: 0.85rem; display: block; margin-bottom: 6px; }
+    .info-box p { color: var(--text-muted); font-size: 0.85rem; line-height: 1.6; margin: 0; }
+    .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 4px;
+    }
+    .stat-item {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px 14px;
+    }
+    .stat-item .stat-label {
+        color: var(--text-muted);
+        font-size: 0.78rem;
+        font-weight: 500;
+        display: block;
+        margin-bottom: 4px;
+    }
+    .stat-item .stat-value {
+        color: var(--text);
+        font-size: 1.1rem;
+        font-weight: 700;
+        font-family: var(--font-mono);
+    }
+    .stat-item.accent .stat-value { color: var(--accent-hover); }
+    .limit-note {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px 14px;
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        line-height: 1.5;
+    }
+    .page-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(52,211,153,0.1);
+        border: 1px solid rgba(52,211,153,0.3);
+        color: #34d399;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        padding: 4px 10px;
+        border-radius: 20px;
+        margin-bottom: 16px;
+    }
+</style>
 </head>
 <body>
-    <a href="index.html" class="btn-home" id="homeLink" style="animation: fadeInButton 0.5s ease-out;">🏠 <span>Página de Inicio</span></a>
-    
+    <a href="index.html" class="btn-home" id="homeLink">← Inicio</a>
+
     <div class="container">
-        <!-- Panel izquierdo: Generador PDF -->
+        <!-- Panel izquierdo: Generador PDF + Configuración -->
         <div class="panel" style="padding: 20px;">
-            <h2 style="font-size: 1.5em; margin-bottom: 18px; padding-bottom: 10px;">📄 Generador de Plantilla PDF</h2>
-            
+            <div class="page-tag">🐧 EXT Filesystem</div>
+            <h2 style="font-size: 1.15em; margin-bottom: 18px; padding-bottom: 10px;">Generador de Plantilla PDF</h2>
+
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                 <div class="form-group" style="margin-bottom: 12px;">
                     <label for="divs" style="margin-bottom: 6px; font-size: 0.9em;">Número de Clústers</label>
@@ -54,42 +117,20 @@
                 </div>
             </div>
 
-            <button onclick="generarPDF()" style="margin-top: 12px; padding: 12px 24px;">🚀 Generar Plantilla PDF</button>
+            <button onclick="generarPDF()" style="margin-top: 12px; padding: 12px 24px;">⬇️ Generar Plantilla PDF</button>
 
             <div class="divider" style="margin: 18px 0;"></div>
 
-            <div style="background: #fef3c7; padding: 10px; border-radius: 8px; border-left: 4px solid #f59e0b;">
-                <strong style="color: #92400e; font-size: 0.85em;">💡 Instrucciones:</strong>
-                <p style="color: #78350f; margin-top: 5px; font-size: 0.78em; line-height: 1.3;">
-                    Configure el número de clústers, inodos, tipo de punteros y cantidad de punteros.
-                    Active los booleanos si desea visualizar las columnas D, D, R en la tabla EXT.
-                    Al generar, se descargará automáticamente un PDF con la estructura del sistema de archivos EXT.
-                </p>
-            </div>
-
-            <div class="divider" style="margin: 18px 0;"></div>
-
-            <div style="background: #dbeafe; padding: 12px; border-radius: 8px; border-left: 4px solid #3b82f6;">
-                <strong style="color: #1e40af; font-size: 0.85em;">📚 Creación del Directorio Raíz</strong>
-                <p style="color: #1e3a8a; margin-top: 8px; font-size: 0.78em; line-height: 1.5;">
-                    <strong>El directorio raíz (/) se crea automáticamente al inicializar el sistema y ocupa:</strong>
-                </p>
-                <ul style="color: #1e3a8a; font-size: 0.75em; line-height: 1.5; margin: 8px 0 0 20px; padding: 0;">
-                    <li><strong>Inodo 1:</strong> Se asigna al directorio raíz y se marca como ocupado (F).</li>
-                    <li><strong>Con Punteros Simples (PS):</strong> Solo se ocupa <strong>C1</strong> (contiene los datos del directorio raíz).</li>
-                    <li><strong>Con Punteros Dobles (PD):</strong> Se ocupan <strong>C1</strong> (datos) + <strong>C8</strong> (último clúster, contiene PS que apuntan a C1).</li>
-                    <li><strong>Con Punteros Triples (PT):</strong> Se ocupan <strong>C1</strong> (datos) + <strong>C7</strong> (contiene PS) + <strong>C8</strong> (contiene PD que apuntan a C7).</li>
-                </ul>
-                <p style="color: #1e3a8a; margin-top: 8px; font-size: 0.75em; line-height: 1.5;">
-                    En el PDF generado, los clústeres ocupados aparecen marcados con "F" en la tabla EXT,
-                    y el Inodo 1 muestra su primer puntero apuntando al clúster correspondiente según el tipo de punteros seleccionado.
-                </p>
+            <div class="info-box">
+                <strong>💡 Instrucciones</strong>
+                <p>Configure los parámetros del sistema EXT y genere una plantilla PDF para practicar.
+                El simulador calculará automáticamente los límites teóricos y reales según la configuración.</p>
             </div>
         </div>
 
         <!-- Panel derecho: Explorador EXT -->
         <div class="panel">
-            <h2>📋 Explorador del Sistema EXT</h2>
+            <h2>Explorador del Sistema EXT</h2>
 
             <div class="form-group">
                 <label for="comandoSelect">Comando</label>
@@ -108,50 +149,38 @@
 
             <div class="divider"></div>
 
-            <h3>📁 Árbol del Sistema de Archivos</h3>
+            <h3>Árbol del sistema de archivos</h3>
             <pre id="vista">/ (raíz)</pre>
 
-            <h3>📊 Estadísticas</h3>
-            <div style="padding: 15px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; border: 2px solid #bae6fd;">
-                <div style="margin-bottom: 10px;">
-                    <span style="color: #0c4a6e; font-weight: 600;">Máximo de clústers histórico: </span>
-                    <span class="stats-badge" id="maxClusters">0</span>
+            <h3>Estadísticas</h3>
+            <div class="stats-grid">
+                <div class="stat-item accent">
+                    <span class="stat-label">Máximo clústers usados</span>
+                    <span class="stat-value" id="maxClusters">0</span>
                 </div>
-                <div style="margin-bottom: 10px;">
-                    <span style="color: #0c4a6e; font-weight: 600;">Clústers en uso: </span>
-                    <span class="stats-badge" id="clustersEnUso">0</span>
-                    <span style="color: #64748b; font-size: 0.85em;"> / </span>
-                    <span style="color: #64748b; font-size: 0.85em;" id="clustersTotal">8</span>
+                <div class="stat-item">
+                    <span class="stat-label">Clústers en uso / Total</span>
+                    <span class="stat-value"><span id="clustersEnUso">0</span> / <span id="clustersTotal">0</span></span>
                 </div>
-                <div style="margin-bottom: 10px;">
-                    <span style="color: #0c4a6e; font-weight: 600;">Inodos en uso: </span>
-                    <span class="stats-badge" id="inodosEnUso">1</span>
-                    <span style="color: #64748b; font-size: 0.85em;"> / </span>
-                    <span style="color: #64748b; font-size: 0.85em;" id="inodosTotal">4</span>
+                <div class="stat-item">
+                    <span class="stat-label">Inodos en uso / Total</span>
+                    <span class="stat-value"><span id="inodosEnUso">0</span> / <span id="inodosTotal">0</span></span>
                 </div>
-                <div style="padding: 10px; background: #fef3c7; border-radius: 8px; border-left: 3px solid #f59e0b;">
-                    <div style="margin-bottom: 6px;">
-                        <span style="color: #92400e; font-weight: 600; font-size: 0.9em;">📏 Máximo REAL por archivo: </span>
-                        <span style="color: #92400e; font-weight: 700;" id="maxClustersPorArchivo">4</span>
-                        <span style="color: #92400e; font-size: 0.85em;"> clusters de datos</span>
-                    </div>
-                    <div style="color: #78350f; font-size: 0.75em; margin-bottom: 4px;">
-                        <strong>Teórico del sistema:</strong> <span id="maxTeorico">4</span> clusters
-                    </div>
-                    <div style="color: #78350f; font-size: 0.75em;" id="formulaMaxClusters">
-                        (2 punteros/inodo × 2 punteros/cluster)
-                    </div>
-                    <div style="color: #78350f; font-size: 0.7em; margin-top: 6px; font-style: italic;" id="explicacionMaximo">
-                        Limitado por espacio disponible
-                    </div>
+                <div class="stat-item">
+                    <span class="stat-label">Máx. clústers por archivo</span>
+                    <span class="stat-value" id="maxClustersPorArchivo">0</span>
                 </div>
             </div>
+            <div class="limit-note" style="margin-top: 10px;">
+                <span style="color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;">Límite teórico</span><br>
+                <span id="maxTeorico" style="font-family: var(--font-mono); font-size: 1rem; color: var(--text);">0</span>
+                <span id="formulaMaxClusters" style="color: var(--text-faint); font-size: 0.8rem; margin-left: 6px;"></span><br>
+                <span id="explicacionMaximo" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; display: block;"></span>
+            </div>
 
-            <h3>📝 Historial de Instrucciones</h3>
+            <h3>Historial de instrucciones</h3>
             <div id="listaInstrucciones">
-                <div class="empty-state">
-                    No hay instrucciones aún. ¡Añade la primera!
-                </div>
+                <div class="empty-state">No hay instrucciones aún. ¡Añade la primera!</div>
             </div>
         </div>
     </div>

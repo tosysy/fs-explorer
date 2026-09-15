@@ -3,25 +3,57 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sistema FAT</title>
+<title>Sistema FAT — FS Explorer</title>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
 <link rel="stylesheet" href="styles.css">
-
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+    .info-box {
+        background: rgba(251,191,36,0.07);
+        border: 1px solid rgba(251,191,36,0.2);
+        border-left: 3px solid #fbbf24;
+        border-radius: 8px;
+        padding: 14px 16px;
+    }
+    .info-box strong { color: #fbbf24; font-size: 0.85rem; display: block; margin-bottom: 6px; }
+    .info-box p { color: var(--text-muted); font-size: 0.85rem; line-height: 1.6; margin: 0; }
+    .stats-box {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 14px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .stats-label { color: var(--text-muted); font-size: 0.85rem; font-weight: 500; }
+    .page-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(251,191,36,0.1);
+        border: 1px solid rgba(251,191,36,0.3);
+        color: #fbbf24;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        padding: 4px 10px;
+        border-radius: 20px;
+        margin-bottom: 16px;
+    }
+</style>
 </head>
 <body>
-    <a href="index.html" class="btn-home" id="homeLink" style="animation: fadeInButton 0.5s ease-out;">🏠 <span>Página de Inicio</span></a>
-    <style>
-        @keyframes fadeInButton {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
+    <a href="index.html" class="btn-home" id="homeLink">← Inicio</a>
 
     <div class="container">
         <!-- Panel izquierdo: Generador PDF -->
         <div class="panel">
-            <h2>📄 Generador de Plantilla PDF</h2>
-            
+            <div class="page-tag">📋 FAT Filesystem</div>
+            <h2>Generador de Plantilla PDF</h2>
+
             <div class="form-group">
                 <label for="divs">Número de clústers</label>
                 <input type="number" id="divs" value="4" min="2" max="20">
@@ -30,27 +62,25 @@
             <div class="form-group">
                 <div class="checkbox-group">
                     <input type="checkbox" id="ddrsf">
-                    <label for="ddrsf" style="margin: 0;">Mostrar booleanos (DDRSF)</label>
+                    <label for="ddrsf" style="margin:0;">Mostrar booleanos (DDRSF)</label>
                 </div>
             </div>
 
-            <button onclick="generarPDF()">🚀 Generar Plantilla PDF</button>
+            <button onclick="generarPDF()">⬇️ Generar Plantilla PDF</button>
 
             <div class="divider"></div>
 
-            <div style="background: #fef3c7; padding: 15px; border-radius: 10px; border-left: 4px solid #f59e0b;">
-                <strong style="color: #92400e;">💡 Instrucciones:</strong>
-                <p style="color: #78350f; margin-top: 8px; font-size: 0.9em;">
-                    Configure el número de clústers y active los booleanos si desea visualizar 
-                    las columnas D, D, R, S, F en la tabla FAT. Al generar, se descargará 
-                    automáticamente un PDF con la estructura del sistema de archivos FAT.
-                </p>
+            <div class="info-box">
+                <strong>💡 Instrucciones</strong>
+                <p>Configure el número de clústers y active los booleanos si desea visualizar
+                las columnas D, D, R, S, F en la tabla FAT. Al generar se descargará
+                automáticamente un PDF con la estructura del sistema de archivos FAT.</p>
             </div>
         </div>
 
         <!-- Panel derecho: Explorador FAT -->
         <div class="panel">
-            <h2>📋 Explorador del Sistema FAT</h2>
+            <h2>Explorador del Sistema FAT</h2>
 
             <div class="form-group">
                 <label for="comandoSelect">Comando</label>
@@ -69,20 +99,18 @@
 
             <div class="divider"></div>
 
-            <h3>📁 Árbol del Sistema de Archivos</h3>
+            <h3>Árbol del sistema de archivos</h3>
             <pre id="vista">/ (raíz)</pre>
 
-            <h3>📊 Estadísticas</h3>
-            <div style="padding: 15px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; border: 2px solid #bae6fd;">
-                <span style="color: #0c4a6e; font-weight: 600;">Máximo de clústers: </span>
+            <h3>Estadísticas</h3>
+            <div class="stats-box">
+                <span class="stats-label">Máximo de clústers usados</span>
                 <span class="stats-badge" id="maxClusters">0</span>
             </div>
 
-            <h3>📝 Historial de Instrucciones</h3>
+            <h3>Historial de instrucciones</h3>
             <div id="listaInstrucciones">
-                <div class="empty-state">
-                    No hay instrucciones aún. ¡Añade la primera!
-                </div>
+                <div class="empty-state">No hay instrucciones aún. ¡Añade la primera!</div>
             </div>
         </div>
     </div>
